@@ -9,8 +9,7 @@
 <script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js" crossorigin></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow-y:auto;overflow-x:hidden}
-body{background:#060a12;color:#dde6f5;font-family:-apple-system,sans-serif;min-height:100vh}
+html{scroll-behavior:auto}body{background:#060a12;color:#dde6f5;font-family:-apple-system,sans-serif;min-height:100vh;overflow-x:hidden;overflow-anchor:none}
 input{background:#111b2e;border:1px solid #182236;color:#dde6f5;border-radius:4px;padding:8px 10px;font-size:13px;width:100%;font-family:inherit}
 button{cursor:pointer;border:none;font-family:inherit;transition:opacity .15s}
 button:hover{opacity:.86}button:active{opacity:.65}
@@ -95,7 +94,7 @@ function App(){
   const sc=el===null?"#f04060":el<10?"#10d090":el<30?"#f0a030":"#f04060";
   const sl=el===null?"미연결":el===0?"방금 전":el<60?el+"분 전":Math.floor(el/60)+"시간 전";
 
-  React.useEffect(()=>{const t=setTimeout(()=>doLive(),2000);return()=>clearTimeout(t);},[]);
+  React.useEffect(()=>{window.scrollTo(0,0);const t=setTimeout(()=>doLive(),2000);return()=>clearTimeout(t);},[]);
 
   async function doLive(){
     setLoading(true);setErr(null);
