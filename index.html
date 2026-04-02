@@ -2,13 +2,14 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5"/>
 <title>MarketPulse v8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/recharts@2.5.0/umd/Recharts.js" crossorigin></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow-y:auto;overflow-x:hidden}
 body{background:#060a12;color:#dde6f5;font-family:-apple-system,sans-serif;min-height:100vh}
 input{background:#111b2e;border:1px solid #182236;color:#dde6f5;border-radius:4px;padding:8px 10px;font-size:13px;width:100%;font-family:inherit}
 button{cursor:pointer;border:none;font-family:inherit;transition:opacity .15s}
@@ -33,7 +34,7 @@ const C={bg:"#060a12",bg2:"#0c1422",bg3:"#111b2e",bg4:"#182236",t1:"#dde6f5",t2:
 const h=React.createElement;
 const AVG=5925;
 const DEF={sp500:6529,cpi:2.7,cpiPrev:2.5,yc:0.08,rate10:4.34,hy:3.5,hyPrev:3.2,nfp:14,ur:4.2,urPrev:4.1,eps:13.0,pmi:49.5,wti:102,vix:28.9,fg:22,rsiW:42.6,macdH:-16.98,macdHPrev:-19.0,pe:19.4,fwdEps:320,cape:35.5,macdDiv:false,rsiDiv:false,headline:"트럼프 이란 공격 10일 중단 — S&P 6,529 반등, WTI $102 유지",updatedAt:"기본값 (📡 버튼으로 갱신)",news:[{time:"오늘",title:"트럼프 이란 공격 10일 일시 중단 — S&P +2.91%",tag:"🔑",col:"#10d090"},{time:"오늘",title:"WTI $102 — 이란 유조선 피격, 호르무즈 봉쇄 우려",tag:"🛢",col:"#f04060"},{time:"어제",title:"파월 '유가 공급충격은 연준 통제 불가'",tag:"📊",col:"#f0a030"}]};
- 
+
 // ── 모델 ──
 const getQuad=(cc,hc)=>cc>=0&&hc<0?{key:"A",cond:"CPI↑+HY축소",upProb:91,color:"#f04060"}:cc<0&&hc<0?{key:"B",cond:"CPI↓+HY축소",upProb:87,color:"#10d090"}:cc<0&&hc>=0?{key:"C",cond:"CPI↓+HY확대",upProb:69,color:"#40a8f0"}:{key:"D",cond:"CPI↑+HY확대",upProb:33,color:"#94a3b8"};
 const sig=x=>1/(1+Math.exp(-x));
@@ -44,7 +45,7 @@ const calcEns=(qp,lp2,cp)=>{const s=Math.round(qp*.5+lp2*100*.3+cp*.2);if(s>=80)
 const predictCPI=(w,c)=>Math.max(0,Math.round((.038*w+.41*c-.6)*10)/10);
 const calcBand=(eps,rate)=>{const fp=Math.min(30,Math.max(12,100/(rate+1.5)));return{fairPE:Math.round(fp*10)/10,fairVal:Math.round(fp*eps),b14:Math.round(14*eps),b18:Math.round(18*eps),b22:Math.round(22*eps),b26:Math.round(26*eps),b30:Math.round(30*eps)};};
 const detectReg=(d,erp,cape)=>{let s=0;if(erp>2)s+=3;else if(erp>1)s+=1;if((d.hy||3.5)<3.5)s+=2;else if((d.hy||3.5)<5)s+=1;if((d.rsiW||42)>50)s+=1;if((d.eps||13)>10)s+=1;if((d.cpi||2.7)<2.5)s+=1;if(erp<0)s-=4;if((d.hy||3.5)>6)s-=3;if(cape>38)s-=2;else if(cape>33)s-=1;if((d.vix||29)>30)s-=2;if((d.cpi||2.7)>3.5)s-=2;if(s>=4)return{label:"강세장",color:"#10d090",emoji:"🟢",score:s};if(s>=1)return{label:"완만한 강세",color:"#3b82f6",emoji:"🔵",score:s};if(s>=-1)return{label:"전환 구간",color:"#f0a030",emoji:"🟡",score:s};return{label:"약세 경계",color:"#f04060",emoji:"🔴",score:s};};
- 
+
 // ── 실시간 API ──
 async function fetchLive(){
   const g=async s=>{try{const r=await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=1d`,{signal:AbortSignal.timeout(7000)});if(!r.ok)throw 0;const j=await r.json();return j?.chart?.result?.[0]?.meta?.regularMarketPrice??null;}catch{return null;}};
@@ -54,12 +55,12 @@ async function fetchLive(){
   if(!Object.keys(out).length)throw new Error("Yahoo Finance 응답 없음");
   return out;
 }
- 
+
 // ── 헬퍼 ──
 const box=(children,style={})=>h("div",{style:{...style}},children);
 const txt=(t,style={})=>h("span",{style},t);
 const btn=(label,onClick,style={})=>h("button",{onClick,style},label);
- 
+
 // ── 메인 앱 ──
 function App(){
   const [d,setD]=React.useState(DEF);
@@ -70,7 +71,7 @@ function App(){
   const [liveTs,setLiveTs]=React.useState(null);
   const [showMi,setShowMi]=React.useState(false);
   const [mi,setMi]=React.useState({sp500:"",wti:"",vix:"",rate10:""});
- 
+
   // 계산
   const cc=(d.cpi||2.7)-(d.cpiPrev||2.5),hc=(d.hy||3.5)-(d.hyPrev||3.2),uc=(d.ur||4.2)-(d.urPrev||4.1);
   const quad=getQuad(cc,hc),combo=getCombo(d.nfp||14,uc);
@@ -93,9 +94,9 @@ function App(){
   const stale=el===null||el>60;
   const sc=el===null?"#f04060":el<10?"#10d090":el<30?"#f0a030":"#f04060";
   const sl=el===null?"미연결":el===0?"방금 전":el<60?el+"분 전":Math.floor(el/60)+"시간 전";
- 
+
   React.useEffect(()=>{const t=setTimeout(()=>doLive(),2000);return()=>clearTimeout(t);},[]);
- 
+
   async function doLive(){
     setLoading(true);setErr(null);
     try{const f=await fetchLive();const ts=new Date().toLocaleString("ko",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"});f.updatedAt=ts+" 실시간";setD(p=>({...p,...f}));setLiveTs(Date.now());}
@@ -109,9 +110,9 @@ function App(){
     u.updatedAt=new Date().toLocaleString("ko",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"})+" 수동";
     setD(p=>({...p,...u}));setLiveTs(Date.now());setShowMi(false);setMi({sp500:"",wti:"",vix:"",rate10:""});
   }
- 
+
   // ── 렌더 ──
-  const W={maxWidth:720,margin:"0 auto",padding:"12px 12px 80px"};
+  const W={maxWidth:720,margin:"0 auto",padding:"12px 12px 80px",overflowX:"hidden"};
   return h("div",{style:W},
     // 헤더
     h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}},
@@ -131,16 +132,16 @@ function App(){
         h("button",{onClick:()=>setShowMi(v=>!v),
           style:{padding:"7px 13px",fontSize:10,borderRadius:6,background:showMi?"rgba(64,168,240,.15)":C.bg3,color:showMi?"#40a8f0":C.t2,border:`1px solid ${showMi?"rgba(64,168,240,.35)":C.bg4}`}},
           "✏️ 수동입력"))),
- 
+
     // 데이터 배너
     h("div",{onClick:stale?doLive:undefined,style:{background:stale?"rgba(240,64,96,.07)":"rgba(16,208,144,.04)",border:`1px solid ${stale?"rgba(240,64,96,.2)":"rgba(16,208,144,.15)"}`,borderLeft:`3px solid ${sc}`,padding:"7px 12px",marginBottom:err?6:10,borderRadius:"0 4px 4px 0",display:"flex",justifyContent:"space-between",alignItems:"center",cursor:stale?"pointer":"default"}},
       h("div",{style:{fontSize:9,color:sc,fontWeight:700}},stale?"⚠ 기본값 — 탭하여 갱신":"✅ 최신"),
       h("div",{style:{fontSize:8,color:C.t3}},"S&P "+sp.toLocaleString()+" · WTI $"+(d.wti||102)+" · VIX "+(d.vix||28.9)+" · 10Y "+(d.rate10||4.34)+"%")),
- 
+
     // 에러
     err&&h("div",{style:{background:"rgba(240,80,96,.07)",borderLeft:"3px solid #f04060",padding:"7px 11px",fontSize:10,color:"#f04060",marginBottom:8,borderRadius:"0 4px 4px 0"}},
       "⚠ "+err,h("br"),h("span",{style:{fontSize:9,color:C.t2}},"💡 ✏️ 수동입력으로 직접 넣으세요")),
- 
+
     // 수동 입력
     showMi&&h("div",{style:{background:C.bg2,border:"1px solid rgba(64,168,240,.2)",borderLeft:"3px solid #40a8f0",borderRadius:"0 6px 6px 0",padding:"12px 14px",marginBottom:10}},
       h("div",{style:{fontSize:10,fontWeight:700,color:"#40a8f0",marginBottom:10}},"✏️ 수동 입력"),
@@ -152,7 +153,7 @@ function App(){
       h("div",{style:{display:"flex",gap:8}},
         h("button",{onClick:doManual,style:{flex:1,padding:9,fontSize:11,fontWeight:700,borderRadius:5,background:"linear-gradient(135deg,#40a8f0cc,#40a8f0)",color:"#060a12"}},"✓ 반영"),
         h("button",{onClick:()=>setShowMi(false),style:{padding:"9px 14px",fontSize:10,borderRadius:5,background:C.bg3,color:C.t2,border:`1px solid ${C.bg4}`}},"취소"))),
- 
+
     // 앙상블 카드
     h("div",{className:ens.score>=68?"glow":"",style:{background:"linear-gradient(160deg,#0c1422,#0a1628)",borderRadius:8,padding:"14px 15px",marginBottom:10,border:`1px solid ${ens.color}28`,position:"relative",overflow:"hidden"}},
       h("div",{style:{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${ens.color},transparent)`}}),
@@ -177,7 +178,7 @@ function App(){
             h("div",{style:{fontSize:9,color:s.c,fontWeight:700,marginBottom:1,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}},s.sub),
             h("div",{style:{fontSize:18,fontWeight:900,color:s.c,lineHeight:1.1}},s.val),
             h("div",{style:{fontSize:7,color:C.t3,marginTop:1}},s.note))))),
- 
+
     // 수렴 패널
     h("div",{style:{background:`linear-gradient(135deg,${conv.c}0a,${C.bg2})`,border:`1px solid ${conv.c}25`,borderRadius:8,padding:"12px 14px",marginBottom:10,position:"relative",overflow:"hidden"}},
       h("div",{style:{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,transparent,${conv.c},transparent)`}}),
@@ -191,18 +192,18 @@ function App(){
         h("div",{style:{height:"100%",width:intS+"%",background:`linear-gradient(90deg,${conv.c}44,${conv.c})`,borderRadius:3,transition:"width .8s"}})),
       h("div",{style:{display:"flex",justifyContent:"space-between",fontSize:8,color:C.t3}},
         h("span","앙상블 "+ens.score+"점"),h("span",{style:{color:conv.c,fontWeight:700}},"→ "+conv.a),h("span","통합 "+intS+"점"))),
- 
+
     // 탭
     h("div",{style:{display:"flex",background:C.bg2,marginBottom:14,borderRadius:4,overflow:"hidden",border:`1px solid ${C.bg4}`}},
       [["today","① 오늘"],["model","② 모델/방향"]].map(([v,l])=>
         h("button",{key:v,onClick:()=>setTab(v),style:{flex:1,padding:"9px 4px",fontSize:10,fontWeight:tab===v?700:400,background:tab===v?C.bg3:C.bg2,color:tab===v?C.t1:C.t2,border:"none",borderBottom:tab===v?"2px solid "+ens.color:"2px solid transparent",borderTop:"2px solid transparent"}},l))),
- 
+
     tab==="today"&&h(TodayTab,{d,ens,combo,sp,uc}),
     tab==="model"&&h(ModelTab,{d,ens,quad,combo,LP,qc,ERP,CAPE,EY,realERP,reg}),
- 
+
     h("div",{style:{fontSize:8,color:C.t3,textAlign:"center",marginTop:20,lineHeight:1.8}},"MARKETPULSE v8 · 투자 참고용 · WF 77~83%"));
 }
- 
+
 // ── TodayTab ──
 function TodayTab({d,ens,combo,sp,uc}){
   const [chk,setChk]=React.useState({p2:false,p3:false,p4:false,s1:false,s2:false});
@@ -222,7 +223,7 @@ function TodayTab({d,ens,combo,sp,uc}){
     {key:"s1",label:"SGOV 1차 배포",amt:4000,color:"#f0a030",must:[{l:"📌 120주봉 (현재 "+sp.toLocaleString()+")",met:at120},{l:"📌 앙상블 55+",met:ensGood}],conds:[{l:"MACD 수렴 ("+mac.toFixed(1)+")",met:macdCV}],req:1,note:"SGOV → VOO/QQQ"},
     {key:"s2",label:"SGOV 2차 배포",amt:5000,color:"#f04060",must:[{l:"📌 다이버전스",met:bullDiv},{l:"📌 앙상블 55+",met:ensGood},{l:"📌 120주봉",met:at120}],conds:[],req:0,note:"최강 확신 · 대량"},
   ];
- 
+
   return h("div",null,
     // 브리핑
     h("div",{style:{background:(ens.score>=55?"#10d090":ens.score>=40?"#f0a030":"#f04060")+"0a",border:`1px solid ${ens.score>=55?"#10d090":ens.score>=40?"#f0a030":"#f04060"}28`,borderLeft:`3px solid ${ens.score>=55?"#10d090":ens.score>=40?"#f0a030":"#f04060"}`,borderRadius:"0 6px 6px 0",padding:"10px 13px",marginBottom:14}},
@@ -236,7 +237,7 @@ function TodayTab({d,ens,combo,sp,uc}){
       ].map((l,i)=>h("div",{key:i,style:{display:"flex",gap:7,marginBottom:i<2?6:0}},
         h("span",{style:{color:ens.score>=55?"#10d090":"#f0a030",fontSize:9,flexShrink:0}},(i+1)+"."),
         h("span",{style:{fontSize:10,color:"#dde6f5",lineHeight:1.7}},l)))),
- 
+
     // 자본 현황
     h("div",{style:{background:"linear-gradient(150deg,#0c1422,#080f1e)",borderRadius:8,padding:14,marginBottom:14,border:"1px solid #1a2840",position:"relative",overflow:"hidden"}},
       h("div",{style:{position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,transparent,rgba(64,168,240,.5),transparent)"}}),
@@ -253,7 +254,7 @@ function TodayTab({d,ens,combo,sp,uc}){
       sT>0&&h("div",{style:{display:"flex",justifyContent:"space-between",padding:"6px 9px",background:C.bg4,borderRadius:3,marginTop:8}},
         h("span",{style:{fontSize:9,color:C.t2}},"S&P 평가손익 (평단 5,925)"),
         h("div",null,h("span",{style:{fontSize:12,fontWeight:800,color:ur>=0?"#10d090":"#f04060"}},(ur>=0?"+":"")+((ur)*100).toFixed(1)+"%"),h("span",{style:{fontSize:9,color:gn>=0?"rgba(16,208,144,.6)":"rgba(240,64,96,.6)",marginLeft:5}},"("+(gn>=0?"+":"")+gn.toLocaleString()+"만)")))),
- 
+
     // 매수 계획
     h("div",{style:{fontSize:9,letterSpacing:".12em",color:C.t3,textTransform:"uppercase",margin:"16px 0 8px",paddingBottom:5,borderBottom:`1px solid ${C.bg4}`}},"▸ 매수 실행 계획 — 탭하여 집행 체크"),
     ...ACTS.map(a=>{
@@ -278,7 +279,7 @@ function TodayTab({d,ens,combo,sp,uc}){
             h("div",{style:{fontSize:14,fontWeight:900,color:bc}},a.key==="p4"?p4A.toLocaleString()+"만":a.amt.toLocaleString()+"만"),
             h("div",{style:{fontSize:8,color:mOK?"rgba(16,208,144,.6)":"rgba(240,64,96,.6)",marginTop:2}},mOK?"필수✅":"필수🔒"))));
     }),
- 
+
     // 뉴스
     h("div",{style:{fontSize:9,letterSpacing:".12em",color:C.t3,textTransform:"uppercase",margin:"16px 0 8px",paddingBottom:5,borderBottom:`1px solid ${C.bg4}`}},"▸ 오늘의 시장"),
     h("div",{style:{background:"rgba(240,160,48,.06)",borderLeft:"3px solid #f0a030",padding:"8px 12px",marginBottom:8,borderRadius:2,fontSize:10,color:"#e8c070",lineHeight:1.6}},d.headline),
@@ -286,7 +287,7 @@ function TodayTab({d,ens,combo,sp,uc}){
       h("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:2}},h("span",{style:{fontSize:8,color:n.col,fontWeight:700}},n.tag),h("span",{style:{fontSize:8,color:C.t3}},n.time)),
       h("div",{style:{fontSize:10,color:C.t2,lineHeight:1.5}},n.title))));
 }
- 
+
 // ── ModelTab ──
 function ModelTab({d,ens,quad,combo,LP,qc,ERP,CAPE,EY,realERP,reg}){
   const [sub,setSub]=React.useState("ens");
@@ -294,12 +295,12 @@ function ModelTab({d,ens,quad,combo,LP,qc,ERP,CAPE,EY,realERP,reg}){
   const iP=+(cSP/fE).toFixed(1),cb=calcBand(fE,cR),disc=Math.round((cSP/cb.fairVal-1)*100);
   const wti=d.wti||102,c1=predictCPI(wti,cCPI),c2=predictCPI(wti,c1),c3=predictCPI(wti,c2);
   const wC=wti>=100?"#f04060":wti>=85?"#f59e0b":wti>=70?"#f0a030":"#10d090";
- 
+
   const TABS2=[["ens","앙상블"],["perband","PER밴드"],["wti","유가-물가"],["adv","고급지표"]];
   return h("div",null,
     h("div",{style:{display:"flex",background:C.bg2,marginBottom:12,borderRadius:4,overflow:"hidden",border:`1px solid ${C.bg4}`}},
       TABS2.map(([v,l])=>h("button",{key:v,onClick:()=>setSub(v),style:{flex:1,padding:"8px 2px",fontSize:9,fontWeight:sub===v?700:400,background:sub===v?C.bg3:C.bg2,color:sub===v?C.t1:C.t2,border:"none",borderBottom:sub===v?"2px solid #40a8f0":"2px solid transparent"}},l))),
- 
+
     sub==="ens"&&h("div",null,
       h("div",{style:{background:C.bg2,borderLeft:"3px solid #a78bfa",padding:13,marginBottom:12,borderRadius:2}},
         h("div",{style:{fontSize:11,fontWeight:700,color:"#a78bfa",marginBottom:10}},"현재 점수 계산"),
@@ -328,7 +329,7 @@ function ModelTab({d,ens,quad,combo,LP,qc,ERP,CAPE,EY,realERP,reg}){
         h("div",{style:{display:"flex",alignItems:"center",gap:12}},
           h("div",{style:{fontSize:40,fontWeight:900,color:"#a78bfa",lineHeight:1}},Math.round(LP*100)+"%"),
           h("div",null,h("div",{style:{fontSize:14,fontWeight:800,color:"#a78bfa"}},"CPI+YC+HY+EPS"),h("div",{style:{fontSize:10,color:C.t2,marginTop:2}},LP>=.7?"강한 상승":LP>=.55?"중간 상승":LP>=.45?"중립":"하락 경계"))))),
- 
+
     sub==="perband"&&h("div",null,
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:4,marginBottom:10}},
         [{l:"현재 S&P",v:cSP.toLocaleString(),c:C.t1},{l:"선행 EPS",v:"$"+fE,c:"#40a8f0"},{l:"현재 PE",v:iP+"x",c:iP>26?"#f04060":iP>22?"#f0a030":"#10d090"},{l:"적정가 대비",v:(disc>0?"+":"")+disc+"%",c:disc>20?"#f04060":disc>0?"#f0a030":"#10d090"}].map(x=>
@@ -344,7 +345,7 @@ function ModelTab({d,ens,quad,combo,LP,qc,ERP,CAPE,EY,realERP,reg}){
             h("span",{style:{fontSize:10,fontWeight:800,textAlign:"right",color:d2>20?"#f04060":d2>0?"#f0a030":"#10d090"}},(d2>0?"+":"")+d2+"%"));})),
       h("div",{style:{marginTop:10,padding:"8px 10px",background:C.bg4,borderRadius:4,fontSize:9,color:C.t2,lineHeight:1.7}},
         "현재 PE "+iP+"x → 금리 기반 적정가 "+cb.fairVal.toLocaleString()+" · 22x 밴드 "+cb.b22.toLocaleString()+" · 18x 지지선 "+cb.b18.toLocaleString())),
- 
+
     sub==="wti"&&h("div",null,
       h("div",{style:{background:wC+"0d",border:`1px solid ${wC}28`,borderLeft:`3px solid ${wC}`,borderRadius:"0 6px 6px 0",padding:"10px 12px",marginBottom:10}},
         h("div",{style:{fontSize:10,fontWeight:700,color:wC,marginBottom:2}},"🛢 WTI $"+wti+" — "+(wti>=100?"🔴 $100 돌파 경보":wti>=85?"🟠 경계 위":"🟢 $80 이하 강세")),
@@ -363,7 +364,7 @@ function ModelTab({d,ens,quad,combo,LP,qc,ERP,CAPE,EY,realERP,reg}){
               h("div",{style:{flex:1,height:5,background:C.bg4,borderRadius:3,overflow:"hidden"}},h("div",{style:{height:"100%",width:pE+"%",background:s.col,borderRadius:3}})),
               h("span",{style:{fontSize:12,fontWeight:800,color:s.col,width:32,textAlign:"right"}},pE),
               h("span",{style:{fontSize:9,color:imp<0?"#f04060":"#10d090",width:40,textAlign:"right",fontWeight:700}},(imp>0?"+":"")+imp+"점")));}))),
- 
+
     sub==="adv"&&h("div",null,
       h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}},
         [{l:"ERP (Fed Model)",basis:"EY "+EY+"% − "+cR+"%",val:(ERP>0?"+":"")+ERP+"%",c:ERP>0?"#10d090":"#f04060",desc:ERP>1.5?"주식 매력적":ERP>0?"거의 중립":"채권 우위"},{l:"실질 ERP",basis:"EY "+EY+"% − CPI "+cCPI+"%",val:(realERP>0?"+":"")+realERP+"%",c:realERP>1?"#10d090":realERP>0?"#f0a030":"#f04060",desc:realERP>=3?"실질수익 충분":realERP>=1?"보통":realERP>=0?"물가에 잠식":"실질손실"}].map(x=>
@@ -385,7 +386,7 @@ function ModelTab({d,ens,quad,combo,LP,qc,ERP,CAPE,EY,realERP,reg}){
           h("div",{style:{flex:1}},h("div",{style:{fontSize:20,fontWeight:900,color:reg.color}},reg.label)),
           h("div",{style:{textAlign:"right"}},h("div",{style:{fontSize:26,fontWeight:900,color:reg.color}},(reg.score>0?"+":"")+reg.score),h("div",{style:{fontSize:8,color:C.t3}},"레짐 점수"))))));
 }
- 
+
 // ── 마운트 ──
 const root=ReactDOM.createRoot(document.getElementById("root"));
 root.render(React.createElement(App));
