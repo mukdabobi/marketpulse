@@ -47,11 +47,52 @@ const detectReg=(d,erp,cape)=>{let s=0;if(erp>2)s+=3;else if(erp>1)s+=1;if((d.hy
 
 // ── 실시간 API ──
 async function fetchLive(){
-  const g=async s=>{try{const r=await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(s)}?interval=1d&range=1d`,{signal:AbortSignal.timeout(7000)});if(!r.ok)throw 0;const j=await r.json();return j?.chart?.result?.[0]?.meta?.regularMarketPrice??null;}catch{return null;}};
-  const [sp,vx,wt,r10]=await Promise.all([g("^GSPC"),g("^VIX"),g("CL=F"),g("^TNX")]);
+  // Yahoo Finance v7 quote API + CORS 프록시 fallback
+  const SYMS={"sp500":"^GSPC","vix":"^VIX","wti":"CL=F","rate10":"^TNX"};
+  const symList=Object.values(SYMS).join(",");
+
+  // 방법1: Yahoo Finance v7 직접
+  const tryDirect=async()=>{
+    const url=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symList)}&fields=regularMarketPrice`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(6000),headers:{"Accept":"application/json"}});
+    if(!r.ok)throw new Error(r.status);
+    const j=await r.json();
+    return j?.quoteResponse?.result||[];
+  };
+
+  // 방법2: allorigins 프록시
+  const tryProxy=async(proxyBase)=>{
+    const target=`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symList)}`;
+    const url=`${proxyBase}${encodeURIComponent(target)}`;
+    const r=await fetch(url,{signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw new Error(r.status);
+    const raw=await r.json();
+    const text=raw.contents||raw;
+    const j=typeof text==="string"?JSON.parse(text):text;
+    return j?.quoteResponse?.result||[];
+  };
+
+  let results=[];
+  try{results=await tryDirect();}catch(e1){
+    try{results=await tryProxy("https://api.allorigins.win/raw?url=");}catch(e2){
+      try{results=await tryProxy("https://corsproxy.io/?url=");}catch(e3){
+        throw new Error("모든 API 차단됨 — ✏️ 수동입력을 사용하세요");
+      }
+    }
+  }
+
   const out={};
-  if(sp)out.sp500=Math.round(sp);if(vx)out.vix=+vx.toFixed(1);if(wt)out.wti=Math.round(wt);if(r10)out.rate10=+r10.toFixed(2);
-  if(!Object.keys(out).length)throw new Error("Yahoo Finance 응답 없음");
+  const keyMap={"^GSPC":"sp500","^VIX":"vix","CL=F":"wti","^TNX":"rate10"};
+  results.forEach(r=>{
+    const k=keyMap[r.symbol];const p=r.regularMarketPrice;
+    if(k&&p!=null){
+      if(k==="sp500")out.sp500=Math.round(p);
+      else if(k==="vix")out.vix=+p.toFixed(1);
+      else if(k==="wti")out.wti=Math.round(p);
+      else if(k==="rate10")out.rate10=+p.toFixed(2);
+    }
+  });
+  if(!Object.keys(out).length)throw new Error("데이터 파싱 실패 — ✏️ 수동입력을 사용하세요");
   return out;
 }
 
